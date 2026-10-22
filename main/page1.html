@@ -391,7 +391,7 @@
 
                 if (allData.length === 0) {
                     document.getElementById('latestEmpty').style.display = 'block';
-                    ['latestTemp', 'latestHum', 'latestPress', 'latestTime'].forEach(id => {
+                    ['latestTime', 'latestTemp_Blood', "latestTemp_Internal"].forEach(id => {
                         document.getElementById(id).textContent = '--';
                     });
                     clearStats();
@@ -400,15 +400,14 @@
                 document.getElementById('latestEmpty').style.display = 'none';
 
                 const last = allData[allData.length - 1];
-                document.getElementById('latestTemp').textContent = fmtTemp(last.temp_c);
-                document.getElementById('latestHum').textContent = `${last.hum}%`;
-                document.getElementById('latestPress').textContent = `${last.press} hPa`;
+                document.getElementById('latestTemp_Blood').textContent = last.temp_blood;
+                document.getElementById('latestTemp_Internal').textContent = last.temp_internal;
                 document.getElementById('latestTime').textContent = `${last.day} ${last.time}`;
 
                 const displayData = allData.slice(-1200);
                 const labels = displayData.map(d => d.day + " " + d.time);
 
-                const tempValues = displayData.map(d => currentUnit === 'C' ? parseFloat(d.temp_c) : parseFloat(d.temp_f));
+                const tempValues = displayData.map(d => currentUnit === 'C' ? parseFloat(d.temp_blood) : "");
 
                 tempChart.data.labels = labels;
                 tempChart.data.datasets[0].label = `Temperature (°${currentUnit})`;
@@ -425,11 +424,12 @@
             const result = [];
             for (let i = 1; i < lines.length; i++) {
                 if (!lines[i].trim()) continue;
-                const [temp_c, temp_f, hum, press, time, day] = lines[i].split(',');
-                if (temp_c === undefined || time === undefined || day === undefined) continue;
+                const [time, day, temp_blood, temp_internal] = lines[i].split(',');
+                if (temp_blood === undefined || temp_internal === undefined || time === undefined || day === undefined) continue;
                 const ts = new Date(`${day}T${time}`);
                 result.push({
-                    temp_c: parseFloat(temp_c),
+                    temp_blood: parseFloat(temp_blood),
+                    temp_internal: parseFloat(temp_internal),
                     time, day,
                     ts: isNaN(ts.getTime()) ? null : ts
                 });
@@ -455,8 +455,6 @@
 
         function resetZoomAll() {
             tempChart.resetZoom();
-            humChart.resetZoom();
-            pressChart.resetZoom();
         }
 
         async function deleteData() {
@@ -466,15 +464,6 @@
             loadCSVData();
         }
 
-        function fmtTemp(c) {
-            if (c === null || c === undefined || isNaN(c)) return '--';
-            return currentUnit === 'C' ? `${c.toFixed(1)}°C` : `${(c * 9 / 5 + 32).toFixed(1)}°F`;
-        }
-
-        function fmtTempDelta(c) {
-            if (c === null || c === undefined || isNaN(c)) return '--';
-            return currentUnit === 'C' ? `Δ${c.toFixed(1)}°C` : `Δ${(c * 9 / 5).toFixed(1)}°F`;
-        }
 
         function fmtDuration(mins) {
             if (mins === null || mins === undefined || isNaN(mins)) return '--';
@@ -482,6 +471,13 @@
             const h = Math.floor(mins / 60);
             const m = mins % 60;
             if (h === 0) return `${m}m`;
+            return `${h}h ${m}m`;
+        }
+        function fmtHM(mins) {
+            if (mins === null || mins === undefined || isNaN(mins)) return '--';
+            mins = Math.round(mins);
+            const h = Math.floor(mins / 60);
+            const m = mins % 60;
             return `${h}h ${m}m`;
         }
 
@@ -498,7 +494,7 @@
         }
 
         function validReadings() {
-            return allData.filter(d => d.ts && !isNaN(d.temp_c));
+            return allData.filter(d => d.ts && !isNaN(d.temp_blood));
         }
 
         function groupByDay(readings) {
@@ -515,8 +511,8 @@
             if (readings.length === 0) return null;
             let minR = readings[0], maxR = readings[0];
             for (const r of readings) {
-                if (r.temp_c < minR.temp_c) minR = r;
-                if (r.temp_c > maxR.temp_c) maxR = r;
+                if (r.temp_blood < minR.temp_blood) minR = r;
+                if (r.temp_blood > maxR.temp_blood) maxR = r;
             }
             return { min: minR, max: maxR };
         }
@@ -530,7 +526,7 @@
                 if (!cur.ts || !next.ts) continue;
                 const gapMin = (next.ts - cur.ts) / 60000;
                 if (gapMin <= 0 || gapMin > MAX_GAP_MIN) continue;
-                if (cur.temp_c >= lo && cur.temp_c < hi) {
+                if (cur.temp_blood >= lo && cur.temp_blood < hi) {
                     total += gapMin;
                 }
             }
@@ -588,9 +584,9 @@
 
             const mm24 = minMax(last24h);
             if (mm24) {
-                document.getElementById('stat24Max').textContent = fmtTemp(mm24.max.temp_c);
+                document.getElementById('stat24Max').textContent = `${mm24.max.temp_blood}`;
                 document.getElementById('stat24MaxTime').textContent = `${mm24.max.day} ${mm24.max.time}`;
-                document.getElementById('stat24Min').textContent = fmtTemp(mm24.min.temp_c);
+                document.getElementById('stat24Min').textContent = `${mm24.min.temp_blood}`;
                 document.getElementById('stat24MinTime').textContent = `${mm24.min.day} ${mm24.min.time}`;
             } else {
                 document.getElementById('stat24Max').textContent = '--';
@@ -601,9 +597,9 @@
 
             const mm7 = minMax(last7d);
             if (mm7) {
-                document.getElementById('stat7Max').textContent = fmtTemp(mm7.max.temp_c);
+                document.getElementById('stat7Max').textContent = `${mm7.max.temp_blood}`;
                 document.getElementById('stat7MaxTime').textContent = `${mm7.max.day} ${mm7.max.time}`;
-                document.getElementById('stat7Min').textContent = fmtTemp(mm7.min.temp_c);
+                document.getElementById('stat7Min').textContent = `${mm7.min.temp_blood}`;
                 document.getElementById('stat7MinTime').textContent = `${mm7.min.day} ${mm7.min.time}`;
             } else {
                 document.getElementById('stat7Max').textContent = '--';
@@ -612,8 +608,8 @@
                 document.getElementById('stat7MinTime').textContent = '';
             }
 
-            const HOT_THRESHOLD_C = 25;
-            const COLD_THRESHOLD_C = 15;
+            const HOT_THRESHOLD_C = 2;
+            const COLD_THRESHOLD_C = 6;
             const aboveMins = timeInBand(last7d, HOT_THRESHOLD_C, Infinity);
             const midMins = timeInBand(last7d, COLD_THRESHOLD_C, HOT_THRESHOLD_C);
             const belowMins = timeInBand(last7d, -Infinity, COLD_THRESHOLD_C);
@@ -666,12 +662,12 @@
                     const g = dayGroups[i];
                     const mm = minMax(g.readings);
                     if (!mm) continue;
-                    const swing = mm.max.temp_c - mm.min.temp_c;
+                    const swing = mm.max.temp_blood - mm.min.temp_blood;
                     const tr = document.createElement('tr');
                     tr.innerHTML = `<td>${g.dateKey}</td>` +
-                        `<td>${fmtTemp(mm.min.temp_c)}</td>` +
-                        `<td>${fmtTemp(mm.max.temp_c)}</td>` +
-                        `<td><strong>${fmtTempDelta(swing)}</strong></td>`;
+                        `<td>${mm.min.temp_blood}</td>` +
+                        `<td>${mm.max.temp_blood}</td>` +
+                        `<td><strong>${swing}</strong></td>`;
                     swingBody.appendChild(tr);
                 }
             }
@@ -680,7 +676,7 @@
             const hourCounts = new Array(24).fill(0);
             for (const r of readings) {
                 const h = r.ts.getHours();
-                hourSums[h] += r.temp_c;
+                hourSums[h] += r.temp_blood;
                 hourCounts[h]++;
             }
             const hourLabels = [];
