@@ -16,7 +16,7 @@
 #include "time_manager.h"
 
 #define WIFI_SSID "EEE40011-PROJECT"
-#define WIFI_PASSWORD "123456"
+#define WIFI_PASSWORD "123456789"
 #define HISTORY_MAX_RECORDS 900
 
 static const char *TAG = "WEB";
@@ -59,8 +59,7 @@ static esp_err_t status_handler(httpd_req_t *req) {
 }
 static esp_err_t sync_handler(httpd_req_t *req) {
     char query[96], epoch_str[40] = {0};
-    if (httpd_req_get_url_query_str(req, query, sizeof(query)) != ESP_OK ||
-        httpd_query_key_value(query, "epoch_ms", epoch_str, sizeof(epoch_str)) != ESP_OK) {
+    if (httpd_req_get_url_query_str(req, query, sizeof(query)) != ESP_OK || httpd_query_key_value(query, "epoch_ms", epoch_str, sizeof(epoch_str)) != ESP_OK){
         httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing epoch_ms");
         return ESP_OK;
     }
@@ -96,12 +95,25 @@ esp_err_t web_server_start(void) {
         if (err != ESP_OK) return err;
         err = nvs_flash_init();
     }
-    if (err != ESP_OK) return err;
-    err = esp_netif_init(); if (err != ESP_OK) return err;
-    err = esp_event_loop_create_default(); if (err != ESP_OK) return err;
-    if (!esp_netif_create_default_wifi_ap()) return ESP_FAIL;
+    if (err != ESP_OK){
+        return err;
+    }
+    err = esp_netif_init(); 
+    if (err != ESP_OK){
+        return err;
+    }
+    err = esp_event_loop_create_default(); 
+    if (err != ESP_OK){
+        return err;
+    }
+    if (!esp_netif_create_default_wifi_ap()){
+        return ESP_FAIL;
+    }
     wifi_init_config_t init = WIFI_INIT_CONFIG_DEFAULT();
-    err = esp_wifi_init(&init); if (err != ESP_OK) return err;
+    err = esp_wifi_init(&init); 
+    if (err != ESP_OK){
+        return err;
+    }
     wifi_config_t ap = {0};
     memcpy(ap.ap.ssid, WIFI_SSID, strlen(WIFI_SSID));
     memcpy(ap.ap.password, WIFI_PASSWORD, strlen(WIFI_PASSWORD));
@@ -109,19 +121,43 @@ esp_err_t web_server_start(void) {
     ap.ap.channel = 1;
     ap.ap.max_connection = 4;
     ap.ap.authmode = WIFI_AUTH_WPA2_PSK;
-    err = esp_wifi_set_mode(WIFI_MODE_AP); if (err != ESP_OK) return err;
-    err = esp_wifi_set_config(WIFI_IF_AP, &ap); if (err != ESP_OK) return err;
-    err = esp_wifi_start(); if (err != ESP_OK) return err;
+    err = esp_wifi_set_mode(WIFI_MODE_AP); 
+    if (err != ESP_OK){
+        return err;
+    }
+    err = esp_wifi_set_config(WIFI_IF_AP, &ap); 
+    if (err != ESP_OK){
+        return err;
+    }
+    err = esp_wifi_start(); 
+    if (err != ESP_OK){
+    return err;
+    }
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-    err = httpd_start(&server, &config); if (err != ESP_OK) return err;
+    err = httpd_start(&server, &config); 
+    if (err != ESP_OK){
+        return err;
+    }
     httpd_uri_t page = {.uri = "/", .method = HTTP_GET, .handler = page_handler};
     httpd_uri_t status = {.uri = "/api/status", .method = HTTP_GET, .handler = status_handler};
     httpd_uri_t history = {.uri = "/api/history", .method = HTTP_GET, .handler = history_handler};
     httpd_uri_t sync = {.uri = "/api/time", .method = HTTP_GET, .handler = sync_handler};
-    err = httpd_register_uri_handler(server, &page); if (err != ESP_OK) return err;
-    err = httpd_register_uri_handler(server, &status); if (err != ESP_OK) return err;
-    err = httpd_register_uri_handler(server, &history); if (err != ESP_OK) return err;
-    err = httpd_register_uri_handler(server, &sync); if (err != ESP_OK) return err;
+    err = httpd_register_uri_handler(server, &page); 
+    if (err != ESP_OK){
+        return err;
+    }
+    err = httpd_register_uri_handler(server, &status); 
+    if (err != ESP_OK){
+        return err;
+    }
+    err = httpd_register_uri_handler(server, &history); 
+    if (err != ESP_OK){
+        return err;
+    }
+    err = httpd_register_uri_handler(server, &sync); 
+    if (err != ESP_OK){
+        return err;
+    }
     ESP_LOGI(TAG, "Connect to %s and open http://192.168.4.1", WIFI_SSID);
     return ESP_OK;
 }
