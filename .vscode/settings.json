@@ -1,6 +1,5 @@
 {
   "C_Cpp.intelliSenseEngine": "default",
-  "idf.extensionActivationMode": "always",
   "cmake.configureOnOpen": false,
   "cmake.configureOnEdit": false,
   "cmake.automaticReconfigure": false,
@@ -19,19 +18,12 @@
       "inheritDefault": "hidden"
     }
   },
-  "idf.openOcdConfigs": [
-    "board/esp32-wrover-kit-3.3v.cfg"
-  ],
-  "idf.currentSetup": "C:\\Users\\nandu\\Documents\\ESP32\\.espressif\\v6.1\\esp-idf",
-  "idf.customExtraVars": {
-    "IDF_TARGET": "esp32"
-  },
-  "idf.flashType": "UART",
-  "idf.port": "COM5",
   "clangd.path": "C:\\Espressif\\tools\\esp-clangd\\esp-21.1.3_20260408\\esp-clangd\\bin\\clangd.exe",
   "clangd.arguments": [
     "--background-index",
     "--query-driver=**",
-    "--compile-commands-dir=c:\\Users\\nandu\\Documents\\ESP32\\EEE40011 Project\\build"
-  ]
+    "--compile-commands-dir=c:\\Steve-Working-DIR\\Uni\\Y3 Sem 2\\Innovation Project\\Innovation-Proj\\build"
+  ],
+  "idf.flashType": "UART",
+  "idf.currentSetup": "C:\\esp\\v6.1\\esp-idf"
 }

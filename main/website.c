@@ -2,6 +2,8 @@
 #define WIFI_PASSWORD "123456"
 #define HISTORY_MAX_RECORDS 900
 const char *dataFile = "/temp_log.csv";
+static float cooling_temp = 0, ambient_temp = 0;
+static bool cooling_ok = false, ambient_ok = false;
 
 WiFi.begin(ssid, password);
 Serial.print("Connecting to Wi-Fi");
