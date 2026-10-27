@@ -27,7 +27,9 @@ typedef enum{
     SYSTEM_FAN_STARTUP,
     SYSTEM_COOLING,
     SYSTEM_FAN_COOLDOWN,
-    SYSTEM_SENSOR_ERROR} peltier_state_t;
+    SYSTEM_SENSOR_ERROR} 
+    
+    peltier_state_t;
 
 static peltier_state_t system_state = SYSTEM_OFF;
 
@@ -59,8 +61,7 @@ static void peltier_on(void){
     gpio_set_level(PELTIER_RPWM, 1);
 }
 
-static void peltier_off(void)
-{
+static void peltier_off(void){
     // Disable drive
     gpio_set_level(PELTIER_RPWM, 0);
     gpio_set_level(PELTIER_LPWM, 0);
@@ -74,8 +75,7 @@ static void peltier_off(void)
 // INITIALISATION
 // =====================================
 
-void peltier_control_init(void)
-{
+void peltier_control_init(void){
     gpio_config_t config = {
         .pin_bit_mask =
             (1ULL << PELTIER_RPWM) |
@@ -103,82 +103,58 @@ void peltier_control_init(void)
 // TEMPERATURE CONTROL
 // =====================================
 
-void peltier_control_update(
-    bool sensor_valid,
-    float temperature,
-    TickType_t now)
-{
+void peltier_control_update(bool sensor_valid, float temperature, TickType_t now){
     // Sensor failure
-    if (!sensor_valid)
-    {
+    if (!sensor_valid){
         peltier_off();
         fans_on();
 
-        if (system_state != SYSTEM_SENSOR_ERROR)
-        {
-            ESP_LOGE(TAG,
-                "Sensor failure - Peltier OFF, fans ON");
+        if (system_state != SYSTEM_SENSOR_ERROR){
+            ESP_LOGE(TAG, "Sensor failure - Peltier OFF, fans ON");
         }
-
         system_state = SYSTEM_SENSOR_ERROR;
         return;
     }
 
     // Sensor recovery
-    if (system_state == SYSTEM_SENSOR_ERROR)
-    {
+    if (system_state == SYSTEM_SENSOR_ERROR){
         peltier_off();
         fans_on();
-
         state_start_tick = now;
         system_state = SYSTEM_FAN_COOLDOWN;
-
         ESP_LOGI(TAG, "Sensor recovered");
     }
 
-    switch (system_state)
-    {
+    switch (system_state){
         case SYSTEM_OFF:
-
-            if (temperature > TEMP_ON_THRESHOLD)
-            {
+            if (temperature > TEMP_ON_THRESHOLD){
                 fans_on();
-
                 state_start_tick = now;
                 system_state = SYSTEM_FAN_STARTUP;
-
-                ESP_LOGI(TAG,
-                    "Temperature above 27C - Fans ON");
+                ESP_LOGI(TAG,"Temperature above 27C - Fans ON");
             }
-
             break;
 
         case SYSTEM_FAN_STARTUP:
-
-            if (temperature <= TEMP_OFF_THRESHOLD)
-            {
+            if (temperature <= TEMP_OFF_THRESHOLD){
                 peltier_off();
-
                 state_start_tick = now;
                 system_state = SYSTEM_FAN_COOLDOWN;
 
-                ESP_LOGI(TAG,
-                    "Cooling cancelled");
+                ESP_LOGI(TAG, "Cooling cancelled");
             }
 
             break;
 
         case SYSTEM_COOLING:
 
-            if (temperature <= TEMP_OFF_THRESHOLD)
-            {
+            if (temperature <= TEMP_OFF_THRESHOLD){
                 peltier_off();
 
                 state_start_tick = now;
                 system_state = SYSTEM_FAN_COOLDOWN;
 
-                ESP_LOGI(TAG,
-                    "Peltier OFF - Fan cooldown started");
+                ESP_LOGI(TAG, "Peltier OFF - Fan cooldown started");
             }
 
             break;
@@ -192,8 +168,7 @@ void peltier_control_update(
                 state_start_tick = now;
                 system_state = SYSTEM_FAN_STARTUP;
 
-                ESP_LOGI(TAG,
-                    "Cooling restarting");
+                ESP_LOGI(TAG,"Cooling restarting");
             }
 
             break;
@@ -207,33 +182,23 @@ void peltier_control_update(
 // TIMER CONTROL
 // =====================================
 
-void peltier_control_tick(TickType_t now)
-{
+void peltier_control_tick(TickType_t now){
     // Wait 1 second after fans turn ON
-    if (system_state == SYSTEM_FAN_STARTUP)
-    {
-        if ((now - state_start_tick) >=
-            pdMS_TO_TICKS(FAN_STARTUP_MS))
-        {
+    if (system_state == SYSTEM_FAN_STARTUP){
+        if ((now - state_start_tick) >= pdMS_TO_TICKS(FAN_STARTUP_MS)){
             peltier_on();
-
             system_state = SYSTEM_COOLING;
-
             ESP_LOGI(TAG, "Peltier ON");
         }
     }
 
     // Keep fans running 5 seconds after Peltier OFF
-    else if (system_state == SYSTEM_FAN_COOLDOWN)
-    {
-        if ((now - state_start_tick) >=
-            pdMS_TO_TICKS(FAN_COOLDOWN_MS))
-        {
+    else if (system_state == SYSTEM_FAN_COOLDOWN){
+            if ((now - state_start_tick) >= pdMS_TO_TICKS(FAN_COOLDOWN_MS)){
             fans_off();
-
             system_state = SYSTEM_OFF;
-
             ESP_LOGI(TAG, "Fans OFF");
         }
     }
 }
+
