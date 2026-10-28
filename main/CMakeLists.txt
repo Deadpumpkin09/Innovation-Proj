@@ -4,7 +4,7 @@ idf_component_register(
         "temperature_sensor.c"
         "peltier_control.c"
         "segment_display.c"
-        "sd_logger.c"
+       
         "web_server.c"
         "time_manager.c"
         "battery_monitor.c"
