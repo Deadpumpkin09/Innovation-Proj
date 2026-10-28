@@ -27,19 +27,26 @@ static httpd_handle_t server = NULL;
 extern const char index_html_start[] asm("_binary_index_html_start");
 extern const char index_html_end[] asm("_binary_index_html_end");
 
-void web_server_update_temperatures(bool cv, float c, bool av, float a) {
+void web_server_update_temperatures(bool cv, float c, bool av, float a)
+{
     portENTER_CRITICAL(&sensor_lock);
-    cooling_ok = cv; ambient_ok = av;
-    if (cv) cooling_temp = c;
-    if (av) ambient_temp = a;
+    cooling_ok = cv;
+    ambient_ok = av;
+    if (cv)
+        cooling_temp = c;
+    if (av)
+        ambient_temp = a;
     portEXIT_CRITICAL(&sensor_lock);
 }
-static esp_err_t page_handler(httpd_req_t *req) {
+static esp_err_t page_handler(httpd_req_t *req)
+{
     httpd_resp_set_type(req, "text/html; charset=utf-8");
     return httpd_resp_send(req, index_html_start, index_html_end - index_html_start);
 }
-static esp_err_t status_handler(httpd_req_t *req) {
-    float c, a; bool cv, av;
+static esp_err_t status_handler(httpd_req_t *req)
+{
+    float c, a;
+    bool cv, av;
     portENTER_CRITICAL(&sensor_lock);
     c = cooling_temp; a = ambient_temp; cv = cooling_ok; av = ambient_ok;
     portEXIT_CRITICAL(&sensor_lock);
