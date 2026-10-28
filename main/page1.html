@@ -413,7 +413,7 @@
                 const last = allData[allData.length - 1];
                 document.getElementById('latestTemp_Blood').textContent = last.temp_blood;
                 document.getElementById('latestTemp_Internal').textContent = last.temp_internal;
-                document.getElementById('latestTime').textContent = `${last.day} ${last.time}`;
+                document.getElementById('latestTime').textContent = last.day_time;
                 document.getElementById('latestBattery').textContent = `${last.battery}%`;
 
                 const displayData = allData.slice(-1200);
@@ -436,13 +436,19 @@
             const result = [];
             for (let i = 1; i < lines.length; i++) {
                 if (!lines[i].trim()) continue;
-                const [time, day, temp_blood, temp_internal, battery] = lines[i].split(',');
-                if (temp_blood === undefined || temp_internal === undefined || time === undefined || day === undefined || battery === undefined) continue;
-                const ts = new Date(`${day}T${time}`);
+                const [day_time, temp_blood, temp_internal, battery] = lines[i].split(',');
+                if (temp_blood === undefined || temp_internal === undefined || day_time === undefined || battery === undefined) continue;
+
+                const ts = new Date(day_time.trim().replace(' ', 'T'));
+                const [day, time] = day_time.trim().split(' ');
+
                 result.push({
                     temp_blood: parseFloat(temp_blood),
                     temp_internal: parseFloat(temp_internal),
-                    time, day, battery,
+                    day_time: day_time.trim(),
+                    day: day || '',
+                    time: time || '',
+                    battery: battery.trim(),
                     ts: isNaN(ts.getTime()) ? null : ts
                 });
             }
@@ -607,10 +613,10 @@
 
             const mm24 = minMax(last24h);
             if (mm24) {
-                document.getElementById('stat24Max').textContent = fmtTemp(mm24.max.temp_blood);
-                document.getElementById('stat24MaxTime').textContent = `${mm24.max.day} ${mm24.max.time}`;
-                document.getElementById('stat24Min').textContent = fmtTemp(mm24.min.temp_blood);
-                document.getElementById('stat24MinTime').textContent = `${mm24.min.day} ${mm24.min.time}`;
+                document.getElementById('stat24Max').textContent = fmtTemp(getVal(mm24.max));
+                document.getElementById('stat24MaxTime').textContent = mm24.max.day_time;
+                document.getElementById('stat24Min').textContent = fmtTemp(getVal(mm24.min));
+                document.getElementById('stat24MinTime').textContent = mm24.min.day_time;
             } else {
                 document.getElementById('stat24Max').textContent = '--';
                 document.getElementById('stat24Min').textContent = '--';
@@ -620,10 +626,10 @@
 
             const mm7 = minMax(last7d);
             if (mm7) {
-                document.getElementById('stat7Max').textContent = fmtTemp(mm7.max.temp_blood);
-                document.getElementById('stat7MaxTime').textContent = `${mm7.max.day} ${mm7.max.time}`;
-                document.getElementById('stat7Min').textContent = fmtTemp(mm7.min.temp_blood);
-                document.getElementById('stat7MinTime').textContent = `${mm7.min.day} ${mm7.min.time}`;
+                document.getElementById('stat7Max').textContent = fmtTemp(getVal(mm7.max));
+                document.getElementById('stat7MaxTime').textContent = mm7.max.day_time;
+                document.getElementById('stat7Min').textContent = fmtTemp(getVal(mm7.min));
+                document.getElementById('stat7MinTime').textContent = mm7.min.day_time;
             } else {
                 document.getElementById('stat7Max').textContent = '--';
                 document.getElementById('stat7Min').textContent = '--';
@@ -639,14 +645,6 @@
             document.getElementById('statAbove25').textContent = fmtHM(aboveMins);
             document.getElementById('statMid1525').textContent = fmtHM(midMins);
             document.getElementById('statBelow15').textContent = fmtHM(belowMins);
-
-            const hotLabelC = HOT_THRESHOLD_C;
-            const coldLabelC = COLD_THRESHOLD_C;
-            const hotLabelF = Math.round(HOT_THRESHOLD_C * 9 / 5 + 32);
-            const coldLabelF = Math.round(COLD_THRESHOLD_C * 9 / 5 + 32);
-            document.getElementById('labelAboveThreshold').innerHTML = `Above ${hotLabelC}&deg;C`;
-            document.getElementById('labelMidThreshold').innerHTML = `${coldLabelC}&ndash;${hotLabelC}&deg;C`;
-            document.getElementById('labelBelowThreshold').innerHTML = `Below ${coldLabelC}&deg;C`;
 
             const dayGroups = groupByDay(last7d);
             if (dayGroups.length > 0) {
@@ -679,11 +677,11 @@
                     const g = dayGroups[i];
                     const mm = minMax(g.readings);
                     if (!mm) continue;
-                    const swing = mm.max.temp_blood - mm.min.temp_blood;
+                    const swing = getVal(mm.max) - getVal(mm.min);
                     const tr = document.createElement('tr');
                     tr.innerHTML = `<td>${g.dateKey}</td>` +
-                        `<td>${fmtTemp(mm.min.temp_blood)}</td>` +
-                        `<td>${fmtTemp(mm.max.temp_blood)}</td>` +
+                        `<td>${fmtTemp(getVal(mm.min))}</td>` +
+                        `<td>${fmtTemp(getVal(mm.max))}</td>` +
                         `<td><strong>${fmtTempDelta(swing)}</strong></td>`;
                     swingBody.appendChild(tr);
                 }
