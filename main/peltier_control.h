@@ -9,11 +9,7 @@
 void peltier_control_init(void);
 
 // Update cooling based on temperature
-void peltier_control_update(
-    bool sensor_valid,
-    float temperature,
-    TickType_t now
-);
+void peltier_control_update(bool sensor_valid, float temperature, TickType_t now);
 
 // Update fan startup and cooldown timers
 void peltier_control_tick(TickType_t now);

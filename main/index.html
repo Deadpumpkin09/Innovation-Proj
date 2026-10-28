@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ESP32 Cooling Dashboard</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,Arial,sans-serif;background:#0b1220;color:#edf3fc}*{box-sizing:border-box}body{margin:0;padding:22px}main{max-width:1040px;margin:auto}header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:24px}h1{font-size:1.65rem;margin:0}p{color:#a9b7cc}h2{font-size:1.1rem;margin:0 0 12px}.badge{border:1px solid #30445e;border-radius:30px;padding:7px 12px;color:#b7d5fa;font-size:.85rem}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.card{background:#151f31;border:1px solid #293b55;border-radius:16px;padding:20px;margin-bottom:16px}.label{color:#afbed3;font-size:.9rem}.value{font-size:2.7rem;font-weight:750;margin:8px 0}.muted{color:#98a9c1;font-size:.88rem}.chartwrap{width:100%;overflow:hidden}canvas{width:100%;height:330px;display:block}.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:.85rem;color:#c7d2e3}.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}.controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap}button{background:#2563eb;border:0;border-radius:8px;padding:9px 14px;color:white;font-weight:600;cursor:pointer}button:disabled{opacity:.5}.meter{height:12px;background:#293b55;border-radius:12px;overflow:hidden;margin-top:12px}.meter>div{height:100%;background:#28c68b;width:76%}.footer{font-size:.82rem;color:#96a7bd}@media(max-width:550px){body{padding:12px}.grid{grid-template-columns:1fr}.value{font-size:2.2rem}canvas{height:270px}}
+</style>
+</head>
+<body><main>
+<header><div><h1>Cooling System Dashboard</h1><p>ESP32 · Local temperature monitoring</p></div><span id="connection" class="badge">Connecting…</span></header>
+<div class="grid">
+<section class="card"><div class="label">Cooling temperature · DS18B20</div><div class="value" id="cooling">--.- °C</div><div class="muted">Controls the Peltier</div></section>
+<section class="card"><div class="label">Ambient temperature · DHT11</div><div class="value" id="ambient">--.- °C</div><div class="muted">Monitoring only</div></section>
+</div>
+<section class="card"><div class="controls" style="justify-content:space-between"><h2>Temperature history</h2><button id="refresh" type="button">Reload SD history</button></div>
+<div class="legend"><span><i class="dot" style="background:#55aaff"></i>Cooling</span><span><i class="dot" style="background:#f5ac53"></i>Ambient</span></div>
+<div class="chartwrap"><canvas id="chart"></canvas></div><div id="history-status" class="footer">Loading SD card history…</div></section>
+<div class="grid"><section class="card"><h2>SD card</h2><div id="sd-status" class="label">Checking…</div><div class="muted">CSV temperature history</div></section>
+<section class="card"><h2>Battery (simulated)</h2><div class="label"><span id="battery-value">--</span>% · Demo value only</div><div class="meter"><div id="battery-bar" style="width:0%"></div></div></section></div>
+<div class="footer">Date/time is synchronised from your browser when this dashboard opens. Logging pauses after a reboot until the website is opened again.</div>
+</main>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+let records=[];
+function parseCsv(csv){
+  const lines=csv.trim().split(/\r?\n/);
+  if(lines.length<2)return [];
+  const result=[];
+  for(const line of lines.slice(1)){
+    const a=line.split(',');
+    if(a.length<4)continue;
+    const t=Date.parse(a[0].trim()+'T'+a[1].trim());
+    if(!Number.isFinite(t))continue;
+    const c=a[2].trim()===''?null:Number(a[2]);
+    const h=a[3].trim()===''?null:Number(a[3]);
+    result.push({t,c:Number.isFinite(c)?c:null,h:Number.isFinite(h)?h:null});
+  }
+  result.sort((a,b)=>a.t-b.t);
+  return result;
+}
+async function syncTime(){
+  try{
+    const r=await fetch('/api/time?epoch_ms='+Date.now(),{cache:'no-store'});
+    if(!r.ok)throw Error('HTTP '+r.status);
+  }catch(e){console.warn('Clock synchronisation failed:',e);}
+}
+async function loadHistory(){try{const r=await fetch('/api/history',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);records=parseCsv(await r.text());$('history-status').textContent=records.length+' records loaded from SD card';draw();}catch(e){$('history-status').textContent='SD history unavailable: '+e.message;}}
+async function loadStatus(){try{const r=await fetch('/api/status',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);const s=await r.json();$('cooling').textContent=s.cooling_valid?Number(s.cooling_temperature).toFixed(2)+' °C':'Unavailable';$('ambient').textContent=s.ambient_valid?Number(s.ambient_temperature).toFixed(1)+' °C':'Unavailable';$('sd-status').textContent=s.sd_ready?'SD card mounted':'SD card unavailable';$('connection').textContent=s.time_synced?'Connected · Clock set':'Connected · Clock not set';$('battery-value').textContent=s.battery_simulated;$('battery-bar').style.width=s.battery_simulated+'%';}catch(e){$('connection').textContent='Disconnected';}}
+function draw(){const canvas=$('chart');const rect=canvas.getBoundingClientRect();const ratio=window.devicePixelRatio||1;canvas.width=Math.max(300,Math.floor(rect.width*ratio));canvas.height=Math.floor(rect.height*ratio);const ctx=canvas.getContext('2d');ctx.scale(ratio,ratio);const w=canvas.width/ratio,h=canvas.height/ratio;ctx.clearRect(0,0,w,h);const pad={l:52,r:16,t:20,b:40};const pw=w-pad.l-pad.r,ph=h-pad.t-pad.b;
+if(records.length===0){ctx.fillStyle='#a9b7cc';ctx.font='14px system-ui';ctx.fillText('No recorded temperatures yet',pad.l, h/2);return;}
+const values=records.flatMap(p=>[p.c,p.h]).filter(v=>v!==null&&Number.isFinite(v));if(!values.length){ctx.fillStyle='#a9b7cc';ctx.fillText('No valid temperatures',pad.l,h/2);return;}
+let lo=Math.floor(Math.min(...values)-1),hi=Math.ceil(Math.max(...values)+1);if(hi<=lo)hi=lo+2;const t0=records[0].t,t1=records[records.length-1].t;const xmin=t0,xmax=Math.max(t0+1,t1);const X=t=>pad.l+(t-xmin)/(xmax-xmin)*pw,Y=v=>pad.t+(hi-v)/(hi-lo)*ph;
+ctx.font='12px system-ui';ctx.lineWidth=1;for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,y=Y(v);ctx.strokeStyle='#293b55';ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(w-pad.r,y);ctx.stroke();ctx.fillStyle='#a9b7cc';ctx.fillText(v.toFixed(1),6,y+4);}for(let i=0;i<=4;i++){const t=xmin+(xmax-xmin)*i/4,x=X(t);ctx.fillStyle='#a9b7cc';ctx.fillText(new Date(t).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}),Math.max(pad.l,x-28),h-12);}
+function line(key,color){ctx.strokeStyle=color;ctx.lineWidth=2.4;ctx.beginPath();let started=false;for(const p of records){if(p[key]===null){started=false;continue;}const x=X(p.t),y=Y(p[key]);if(!started){ctx.moveTo(x,y);started=true;}else ctx.lineTo(x,y);}ctx.stroke();}line('c','#55aaff');line('h','#f5ac53');}
+$('refresh').addEventListener('click',loadHistory);window.addEventListener('resize',draw);syncTime().then(()=>{loadStatus();loadHistory();});setInterval(loadStatus,2000);setInterval(loadHistory,10000);
+</script></body></html>

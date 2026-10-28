@@ -40,10 +40,8 @@ static bool display_ready = false;
 // Standard HT16K33 alphanumeric segment patterns.
 // Exact appearance depends on display wiring.
 
-static uint16_t char_pattern(char character)
-{
-    switch (character)
-    {
+static uint16_t char_pattern(char character){
+    switch (character){
         case '0': return 0x0C3F;
         case '1': return 0x0006;
         case '2': return 0x00DB;
@@ -70,45 +68,29 @@ static uint16_t char_pattern(char character)
 // I2C WRITE FUNCTION
 // =====================================
 
-static esp_err_t display_write(
-    const uint8_t *data,
-    size_t length)
-{
-    if (!display_ready)
-    {
+static esp_err_t display_write(const uint8_t *data, size_t length){
+    if (!display_ready){
         return ESP_ERR_INVALID_STATE;
     }
-
-    return i2c_master_transmit(
-        display_handle,
-        data,
-        length,
-        1000
-    );
+    return i2c_master_transmit(display_handle, data, length, 1000);
 }
 
 // =====================================
 // DISPLAY INITIALISATION
 // =====================================
 
-esp_err_t segment_display_init(void)
-{
+esp_err_t segment_display_init(void){
     i2c_master_bus_config_t bus_config = {
         .i2c_port = I2C_NUM_0,
         .sda_io_num = I2C_SDA,
         .scl_io_num = I2C_SCL,
         .clk_source = I2C_CLK_SRC_DEFAULT,
         .glitch_ignore_cnt = 7,
-        .flags.enable_internal_pullup = true
-    };
+        .flags.enable_internal_pullup = true};
 
-    esp_err_t err = i2c_new_master_bus(
-        &bus_config,
-        &bus_handle
-    );
+    esp_err_t err = i2c_new_master_bus(&bus_config, &bus_handle);
 
-    if (err != ESP_OK)
-    {
+    if (err != ESP_OK){
         ESP_LOGE(TAG, "I2C bus initialization failed");
         return err;
     }
@@ -116,17 +98,11 @@ esp_err_t segment_display_init(void)
     i2c_device_config_t device_config = {
         .dev_addr_length = I2C_ADDR_BIT_LEN_7,
         .device_address = DISPLAY_ADDRESS,
-        .scl_speed_hz = I2C_FREQUENCY
-    };
+        .scl_speed_hz = I2C_FREQUENCY};
 
-    err = i2c_master_bus_add_device(
-        bus_handle,
-        &device_config,
-        &display_handle
-    );
+    err = i2c_master_bus_add_device(bus_handle, &device_config, &display_handle);
 
-    if (err != ESP_OK)
-    {
+    if (err != ESP_OK){
         ESP_LOGE(TAG, "Display device setup failed");
         return err;
     }
@@ -180,15 +156,11 @@ static esp_err_t display_four_characters(
 
     buffer[0] = 0x00;
 
-    for (int i = 0; i < 4; i++)
-    {
-        buffer[1 + i * 2] =
-            patterns[i] & 0xFF;
+    for (int i = 0; i < 4; i++){
+        buffer[1 + i * 2] = patterns[i] & 0xFF;
 
-        buffer[2 + i * 2] =
-            (patterns[i] >> 8) & 0xFF;
+        buffer[2 + i * 2] = (patterns[i] >> 8) & 0xFF;
     }
-
     return display_write(buffer, sizeof(buffer));
 }
 
@@ -196,50 +168,34 @@ static esp_err_t display_four_characters(
 // CLEAR DISPLAY
 // =====================================
 
-esp_err_t segment_display_clear(void)
-{
-    return display_four_characters(
-        ' ', ' ', ' ', ' '
-    );
+esp_err_t segment_display_clear(void){
+    return display_four_characters(' ', ' ', ' ', ' ');
 }
 
 // =====================================
 // DISPLAY TEMPERATURE
 // =====================================
 
-esp_err_t segment_display_show_temperature(
-    float temperature)
-{
-    if (!isfinite(temperature))
-    {
-        return display_four_characters(
-            '-', '-', '-', '-'
-        );
+esp_err_t segment_display_show_temperature(float temperature){
+    if (!isfinite(temperature)){
+        return display_four_characters('-', '-', '-', '-');
     }
 
     // Round to nearest whole degree
     int temp = (int)roundf(temperature);
 
-    if (temp >= 0 && temp <= 99)
-    {
+    if (temp >= 0 && temp <= 99){
         char tens = ' ';
         char ones = '0' + (temp % 10);
 
-        if (temp >= 10)
-        {
+        if (temp >= 10){
             tens = '0' + (temp / 10);
         }
 
-        return display_four_characters(
-            tens,
-            ones,
-            'o',
-            'C'
-        );
+        return display_four_characters(tens, ones, 'o', 'C');
     }
 
     // Temperature outside displayable range
-    return display_four_characters(
-        '-', '-', 'o', 'C'
-    );
+    return display_four_characters('-', '-', 'o', 'C');
 }
+

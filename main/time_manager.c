@@ -5,8 +5,10 @@
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/portmacro.h"
+
 static portMUX_TYPE time_lock = portMUX_INITIALIZER_UNLOCKED;
 static bool synced = false;
+
 void time_manager_init(void) {
     // Melbourne: AEST UTC+10, AEDT UTC+11 (Australian DST rules).
     setenv("TZ", "AEST-10AEDT,M10.1.0,M4.1.0/3", 1);
@@ -17,8 +19,7 @@ bool time_manager_set_epoch_ms(int64_t epoch_ms) {
     if (epoch_ms < INT64_C(1704067200000)) return false;
     struct timeval tv = {
         .tv_sec = (time_t)(epoch_ms / 1000),
-        .tv_usec = (suseconds_t)((epoch_ms % 1000) * 1000)
-    };
+        .tv_usec = (suseconds_t)((epoch_ms % 1000) * 1000)};
     if (settimeofday(&tv, NULL) != 0) return false;
     portENTER_CRITICAL(&time_lock);
     synced = true;
