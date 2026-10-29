@@ -172,7 +172,7 @@ void app_main(void)
     }
     else
     {
-        ESP_LOGI(TAG, "Website: http://192.168.4.1");
+        // ESP_LOGI(TAG, "Website: http://192.168.4.1");
         ESP_LOGI(TAG, "Open dashboard to synchronise date/time for SD logging");
     }
 }
