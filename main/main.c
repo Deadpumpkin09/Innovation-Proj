@@ -37,15 +37,22 @@ static void sd_logging_task(void *arg)
 {
     (void)arg;
     temperature_log_t data;
+    char date_buf[16], time_buf[16], day_time[32];
+
     while (true)
     {
         if (xQueueReceive(logging_queue, &data, portMAX_DELAY) == pdTRUE && sd_logger_is_ready() && time_manager_is_set())
         {
             if (data.ambient_valid && data.cooling_valid)
             {
-                if (!sd_logger_write(time_manager_get_local(), data.cooling_temperature, data.ambient_temperature, battery_monitor_get_percentage()))
+                if (time_manager_get_local(date_buf, time_buf))
                 {
-                    ESP_LOGW(TAG, "SD write failed");
+                    snprintf(day_time, sizeof(day_time), "%s %s", date_buf, time_buf);
+
+                    if (!sd_logger_write(day_time, data.cooling_temperature, data.ambient_temperature, battery_monitor_get_percentage()))
+                    {
+                        ESP_LOGW(TAG, "SD write failed");
+                    }
                 }
             }
         }

@@ -13,7 +13,7 @@ idf_component_register(
         "."
 
     EMBED_TXTFILES
-        "index.html"
+        "page1.html"
 
     REQUIRES
         esp_driver_gpio
