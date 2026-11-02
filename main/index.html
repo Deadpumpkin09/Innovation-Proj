@@ -46,13 +46,68 @@ async function syncTime(){
     if(!r.ok)throw Error('HTTP '+r.status);
   }catch(e){console.warn('Clock synchronisation failed:',e);}
 }
-async function loadHistory(){try{const r=await fetch('/api/history',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);records=parseCsv(await r.text());$('history-status').textContent=records.length+' records loaded from SD card';draw();}catch(e){$('history-status').textContent='SD history unavailable: '+e.message;}}
-async function loadStatus(){try{const r=await fetch('/api/status',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);const s=await r.json();$('cooling').textContent=s.cooling_valid?Number(s.cooling_temperature).toFixed(2)+' °C':'Unavailable';$('ambient').textContent=s.ambient_valid?Number(s.ambient_temperature).toFixed(1)+' °C':'Unavailable';$('sd-status').textContent=s.sd_ready?'SD card mounted':'SD card unavailable';$('connection').textContent=s.time_synced?'Connected · Clock set':'Connected · Clock not set';$('battery-value').textContent=s.battery_simulated;$('battery-bar').style.width=s.battery_simulated+'%';}catch(e){$('connection').textContent='Disconnected';}}
-function draw(){const canvas=$('chart');const rect=canvas.getBoundingClientRect();const ratio=window.devicePixelRatio||1;canvas.width=Math.max(300,Math.floor(rect.width*ratio));canvas.height=Math.floor(rect.height*ratio);const ctx=canvas.getContext('2d');ctx.scale(ratio,ratio);const w=canvas.width/ratio,h=canvas.height/ratio;ctx.clearRect(0,0,w,h);const pad={l:52,r:16,t:20,b:40};const pw=w-pad.l-pad.r,ph=h-pad.t-pad.b;
-if(records.length===0){ctx.fillStyle='#a9b7cc';ctx.font='14px system-ui';ctx.fillText('No recorded temperatures yet',pad.l, h/2);return;}
-const values=records.flatMap(p=>[p.c,p.h]).filter(v=>v!==null&&Number.isFinite(v));if(!values.length){ctx.fillStyle='#a9b7cc';ctx.fillText('No valid temperatures',pad.l,h/2);return;}
-let lo=Math.floor(Math.min(...values)-1),hi=Math.ceil(Math.max(...values)+1);if(hi<=lo)hi=lo+2;const t0=records[0].t,t1=records[records.length-1].t;const xmin=t0,xmax=Math.max(t0+1,t1);const X=t=>pad.l+(t-xmin)/(xmax-xmin)*pw,Y=v=>pad.t+(hi-v)/(hi-lo)*ph;
-ctx.font='12px system-ui';ctx.lineWidth=1;for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,y=Y(v);ctx.strokeStyle='#293b55';ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(w-pad.r,y);ctx.stroke();ctx.fillStyle='#a9b7cc';ctx.fillText(v.toFixed(1),6,y+4);}for(let i=0;i<=4;i++){const t=xmin+(xmax-xmin)*i/4,x=X(t);ctx.fillStyle='#a9b7cc';ctx.fillText(new Date(t).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}),Math.max(pad.l,x-28),h-12);}
-function line(key,color){ctx.strokeStyle=color;ctx.lineWidth=2.4;ctx.beginPath();let started=false;for(const p of records){if(p[key]===null){started=false;continue;}const x=X(p.t),y=Y(p[key]);if(!started){ctx.moveTo(x,y);started=true;}else ctx.lineTo(x,y);}ctx.stroke();}line('c','#55aaff');line('h','#f5ac53');}
-$('refresh').addEventListener('click',loadHistory);window.addEventListener('resize',draw);syncTime().then(()=>{loadStatus();loadHistory();});setInterval(loadStatus,2000);setInterval(loadHistory,10000);
+async function loadHistory()
+{
+  try
+  {
+    const r=await fetch('/api/history',{cache:'no-store'});
+   if(!r.ok)throw Error('HTTP '+ r.status);
+   records = parseCsv(await r.text());
+   $('history-status').textContent = records.length+' records loaded from SD card';
+   draw();
+  }
+catch(e)
+{
+  $('history-status').textContent='SD history unavailable: '+e.message;
+}
+}
+
+async function loadStatus(){try{const r=await fetch('/api/status',{cache:'no-store'});
+if(!r.ok)throw Error('HTTP '+r.status);const s=await r.json();
+$('cooling').textContent=s.cooling_valid?Number(s.cooling_temperature).toFixed(2)+' °C':'Unavailable';
+$('ambient').textContent=s.ambient_valid?Number(s.ambient_temperature).toFixed(1)+' °C':'Unavailable';$('sd-status').textContent=s.sd_ready?'SD card mounted':'SD card unavailable';$('connection').textContent=s.time_synced?'Connected · Clock set':'Connected · Clock not set';$('battery-value').textContent=s.battery_simulated;$('battery-bar').style.width=s.battery_simulated+'%';}catch(e){$('connection').textContent='Disconnected';}}
+function draw(){const canvas=$('chart');
+const rect=canvas.getBoundingClientRect();const ratio=window.devicePixelRatio||1;canvas.width=Math.max(300,Math.floor(rect.width*ratio));
+canvas.height=Math.floor(rect.height*ratio);
+const ctx=canvas.getContext('2d');
+ctx.scale(ratio,ratio);
+const w=canvas.width/ratio,h=canvas.height/ratio;ctx.clearRect(0,0,w,h);
+const pad={l:52,r:16,t:20,b:40};
+const pw=w-pad.l-pad.r,ph=h-pad.t-pad.b;
+if(records.length===0){ctx.fillStyle='#a9b7cc';
+ctx.font='14px system-ui';
+ctx.fillText('No recorded temperatures yet',pad.l, h/2);return;
+}
+const values=records.flatMap(p=>[p.c,p.h]).filter(v=>v!==null&&Number.isFinite(v));
+if(!values.length)
+{ctx.fillStyle='#a9b7cc';
+ctx.fillText('No valid temperatures',pad.l,h/2);return;
+}
+let lo=Math.floor(Math.min(...values)-1),hi=Math.ceil(Math.max(...values)+1);
+if(hi<=lo)hi=lo+2;const t0=records[0].t,t1=records[records.length-1].t;
+const xmin=t0,xmax=Math.max(t0+1,t1);
+const X=t=>pad.l+(t-xmin)/(xmax-xmin)*pw,Y=v=>pad.t+(hi-v)/(hi-lo)*ph;
+ctx.font='12px system-ui';
+ctx.lineWidth=1;
+for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,y=Y(v);
+  ctx.strokeStyle='#293b55';ctx.beginPath();ctx.moveTo(pad.l,y);
+  ctx.lineTo(w-pad.r,y);ctx.stroke();ctx.fillStyle='#a9b7cc';
+  ctx.fillText(v.toFixed(1),6,y+4);
+}for(let i=0;i<=4;i++){const t=xmin+(xmax-xmin)*i/4,x=X(t);
+  ctx.fillStyle='#a9b7cc';ctx.fillText(new Date(t).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}),Math.max(pad.l,x-28),h-12);}
+function line(key,color){ctx.strokeStyle=color;ctx.lineWidth=2.4;
+  ctx.beginPath();
+  let started=false;for(const p of records){if(p[key]===null){started=false;continue;
+
+  }const x=X(p.t),y=Y(p[key]);if(!started){ctx.moveTo(x,y);
+    started=true;
+  }else ctx.lineTo(x,y);}ctx.stroke();
+}line('c','#55aaff');line('h','#f5ac53');
+}
+$('refresh').addEventListener('click',loadHistory);window.addEventListener('resize',draw);
+syncTime().then(()=>{loadStatus();
+loadHistory();
+});
+setInterval(loadStatus,2000);
+setInterval(loadHistory,10000);
 </script></body></html>

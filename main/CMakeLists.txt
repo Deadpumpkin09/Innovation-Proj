@@ -5,7 +5,7 @@ idf_component_register(
         "peltier_control.c"
         "segment_display.c"
         "sd_logger.c"
-        "web_server.c"
+        "website.c"
         "time_manager.c"
         "battery_monitor.c"
 
@@ -13,7 +13,7 @@ idf_component_register(
         "."
 
     EMBED_TXTFILES
-        "index.html"
+        "page1.html"
 
     REQUIRES
         esp_driver_gpio
