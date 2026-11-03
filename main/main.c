@@ -109,7 +109,6 @@ static void temperature_task(void *arg)
                 ESP_LOGW(TAG, "DHT11 read failed");
             }
             peltier_control_update(cooling_valid, cooling, xTaskGetTickCount());
-            web_server_update_temperatures(cooling_valid, cooling, ambient_valid, ambient);
             if (time_manager_is_set())
             {
                 temperature_log_t data = {

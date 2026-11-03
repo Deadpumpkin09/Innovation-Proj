@@ -66,6 +66,7 @@ static esp_err_t delete_post_handler(httpd_req_t *req)
     return ESP_FAIL;
 }
 
+
 esp_err_t web_server_start(void)
 {
     esp_err_t err = nvs_flash_init();
