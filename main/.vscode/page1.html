@@ -1,0 +1,847 @@
+<!-- /*
+Rui Santos & Sara Santos - Random Nerd Tutorials
+Complete project details at https://RandomNerdTutorials.com/esp32-web-server-charts-statistics/
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+documentation files.
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the
+Software.
+*/ -->
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Blood Safe Sling Stats</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f4f4;
+            margin: 0;
+            padding: 15px;
+        }
+
+        .container {
+            max-width: 1300px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        .controls {
+            text-align: center;
+            margin: 20px 0;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 12px 22px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-blue {
+            background: #2196F3;
+            color: white;
+        }
+
+        .btn-green {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .btn-red {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-gray {
+            background: #6c777d;
+            color: white;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 380px;
+            margin-bottom: 40px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            touch-action: none;
+        }
+
+        #tempChart {
+            display: block;
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .toggle-group {
+            display: inline-flex;
+            background: #f1f1f1;
+            border-radius: 50px;
+            padding: 4px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .toggle-btn {
+            padding: 8px 24px;
+            font-size: 15px;
+            font-weight: 600;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .toggle-btn.active {
+            background: #393b41;
+            color: white;
+            box-shadow: 0 2px 6px rgba(33, 150, 243, 0.3);
+        }
+
+        .latest-reading {
+            background: #f8f8f8;
+            padding: 15px;
+            font-size: 16px;
+            border-radius: 5px;
+        }
+
+        .stats-section {
+            margin: 30px 0;
+        }
+
+        .stats-section h2 {
+            margin-bottom: 15px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 14px;
+            margin-bottom: 22px;
+        }
+
+        .stat-card {
+            background: #f8f8f8;
+            border: 1px solid #e2e2e2;
+            border-radius: 8px;
+            padding: 14px 16px;
+        }
+
+        .stat-card .label {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 6px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .stat-card .value {
+            font-size: 22px;
+            font-weight: 700;
+            color: #222;
+        }
+
+        .stat-card .subvalue {
+            font-size: 12.5px;
+            color: #888;
+            margin-top: 3px;
+        }
+
+        .stat-card.warn .value {
+            color: #c0392b;
+        }
+
+        .stat-card.cool .value {
+            color: #2980b9;
+        }
+
+        .stat-card.mild .value {
+            color: #27ae60;
+        }
+
+        .subsection-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin: 22px 0 10px;
+            color: #333;
+            border-left: 4px solid #2196F3;
+            padding-left: 10px;
+        }
+
+        table.swing-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 16px;
+            margin-top: 8px;
+        }
+
+        table.swing-table th,
+        table.swing-table td {
+            text-align: left;
+            padding: 8px 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        table.swing-table th {
+            background: #f1f1f1;
+            font-weight: 700;
+        }
+
+        table.swing-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        table.swing-table td.num {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .no-data-msg {
+            color: #888;
+            font-style: italic;
+            padding: 10px 0;
+        }
+
+        .info-note {
+            font-size: 12.5px;
+            color: #999;
+            margin-top: 6px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Blood Safe Sling stats</h1>
+        <div class="info-note" style="text-align:center;">New readings are added to your chart automatically, you don't
+            need to refresh the web page.</div>
+        <div id="liveStatus" class="info-note" role="status" aria-live="polite">Connecting to sensors...</div>
+        <div id="historyStatus" class="info-note" role="status">Loading SD history...</div>
+
+        <div class="chart-header">
+            <h2>Temperature</h2>
+            <div class="toggle-group">
+                <button class="toggle-btn unit-btn active" data-unit="Blood" onclick="setUnit('Blood')">Blood</button>
+                <button class="toggle-btn unit-btn" data-unit="Internal" onclick="setUnit('Internal')">Internal</button>
+            </div>
+        </div>
+        <div class="chart-container"><canvas id="tempChart" aria-label="Temperature over time"></canvas></div>
+        <div class="info-note">Scroll or pinch to zoom, drag to pan, or double-click to reset.</div>
+        <h3>Latest Reading</h3>
+        <div class="stats-grid">
+            <div class="stat-card warn">
+                <div class="label">Blood Temp</div>
+                <div class="value" id="latestTemp_Blood">--</div>
+            </div>
+            <div class="stat-card cool">
+                <div class="label">Internal Temp</div>
+                <div class="value" id="latestTemp_Internal">--</div>
+            </div>
+            <div class="stat-card cool">
+                <div class="label">Battery Value</div>
+                <div class="value" id="latestBattery">--</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Timestamp</div>
+                <div class="value" id="latestTime">--</div>
+            </div>
+        </div>
+        <div id="latestEmpty" class="no-data-msg" style="display:none;">No data logged yet.</div>
+        <div class="stats-section">
+            <div class="chart-header">
+                <h2>Temperature Statistics</h2>
+            </div>
+            <div id="statsEmpty" class="no-data-msg" style="display:none;">Not enough data yet to compute statistics.
+            </div>
+            <div id="statsContent">
+                <div class="subsection-title">Last 24 Hours</div>
+                <div class="stats-grid">
+                    <div class="stat-card warn">
+                        <div class="label">Max Temp (24h)</div>
+                        <div class="value" id="stat24Max">--</div>
+                        <div class="subvalue" id="stat24MaxTime"></div>
+                    </div>
+                    <div class="stat-card cool">
+                        <div class="label">Min Temp (24h)</div>
+                        <div class="value" id="stat24Min">--</div>
+                        <div class="subvalue" id="stat24MinTime"></div>
+                    </div>
+                </div>
+                <div class="subsection-title">Last 7 Days</div>
+                <div class="stats-grid">
+                    <div class="stat-card warn">
+                        <div class="label">Max Temp (7d)</div>
+                        <div class="value" id="stat7Max">--</div>
+                        <div class="subvalue" id="stat7MaxTime"></div>
+                    </div>
+                    <div class="stat-card cool">
+                        <div class="label">Min Temp (7d)</div>
+                        <div class="value" id="stat7Min">--</div>
+                        <div class="subvalue" id="stat7MinTime"></div>
+                    </div>
+                </div>
+                <div class="subsection-title">Time Above / Below Thresholds (Last 7 Days)</div>
+                <div class="stats-grid">
+                    <div class="stat-card warn">
+                        <div class="label" id="labelAboveThreshold">Above 25&deg;C</div>
+                        <div class="value" id="statAbove25">--</div>
+                    </div>
+                    <div class="stat-card mild">
+                        <div class="label" id="labelMidThreshold">15&ndash;25&deg;C</div>
+                        <div class="value" id="statMid1525">--</div>
+                    </div>
+                    <div class="stat-card cool">
+                        <div class="label" id="labelBelowThreshold">Below 15&deg;C</div>
+                        <div class="value" id="statBelow15">--</div>
+                    </div>
+                </div>
+                <div class="info-note">Estimated by adding up the time spent in each temperature band between
+                    consecutive readings. Gaps without readings longer than 15 minutes are ignored.</div>
+                <div class="subsection-title">Time to Max / Time to Min</div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="label">Latest: Min &rarr; Max</div>
+                        <div class="value" id="statMaxToday">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">Latest: Max &rarr; Min</div>
+                        <div class="value" id="statMinToday">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">7d Avg: Min &rarr; Max</div>
+                        <div class="value" id="statMaxAvg7">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">7d Avg: Max &rarr; Min</div>
+                        <div class="value" id="statMinAvg7">--</div>
+                    </div>
+                </div>
+                <div class="subsection-title">Daily Temperature Swing (Last 7 Days)</div>
+                <div class="chart-container" style="height:auto;">
+                    <table class="swing-table" id="swingTable">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th class="num">Min</th>
+                                <th class="num">Max</th>
+                                <th class="num">Swing</th>
+                            </tr>
+                        </thead>
+                        <tbody id="swingTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="controls">
+            <button class="btn btn-blue" onclick="loadCSVData()">Refresh Charts</button>
+            <button class="btn btn-green" onclick="downloadCSV()">Download CSV</button>
+            <button class="btn btn-red" onclick="deleteData()">Delete All Data</button>
+            <button class="btn btn-gray" onclick="resetZoomAll()">Reset All Zoom</button>
+        </div>
+    </div>
+    <script>
+        let allData = [];
+        let liveData = [];
+        let currentTempType = 'Blood';
+        let chartView = null;
+        let historyBusy = false, statusBusy = false, syncBusy = false;
+
+        function createCharts() {
+            // Draw locally so the ESP32 dashboard also works without internet access.
+            const canvas = document.getElementById('tempChart');
+            const pointers = new Map();
+            const distance = () => {
+                const p = Array.from(pointers.values());
+                return p.length === 2 ? Math.abs(p[0] - p[1]) : 0;
+            };
+            canvas.addEventListener('wheel', event => {
+                event.preventDefault();
+                zoomChart(event.deltaY > 0 ? 1.2 : 1 / 1.2);
+            }, { passive: false });
+            canvas.addEventListener('pointerdown', event => {
+                pointers.set(event.pointerId, event.clientX);
+                canvas.setPointerCapture(event.pointerId);
+            });
+            canvas.addEventListener('pointermove', event => {
+                if (!pointers.has(event.pointerId)) return;
+                const previousX = pointers.get(event.pointerId), previousDistance = distance();
+                pointers.set(event.pointerId, event.clientX);
+                if (pointers.size === 2) {
+                    const nextDistance = distance();
+                    if (previousDistance > 0 && nextDistance > 0) zoomChart(previousDistance / nextDistance);
+                } else if (chartView) {
+                    const shift = (previousX - event.clientX) / Math.max(1, canvas.clientWidth - 75) * (chartView[1] - chartView[0]);
+                    chartView = chartView.map(t => t + shift);
+                    drawChart();
+                }
+            });
+            const release = event => pointers.delete(event.pointerId);
+            canvas.addEventListener('pointerup', release);
+            canvas.addEventListener('pointercancel', release);
+            canvas.addEventListener('lostpointercapture', release);
+            canvas.addEventListener('dblclick', resetZoomAll);
+            window.addEventListener('resize', drawChart);
+            drawChart();
+        }
+
+        function chartRecords() {
+            const lastLogged = allData.length ? allData[allData.length - 1].ts.getTime() : -Infinity;
+            return allData.concat(liveData.filter(r => r.ts.getTime() > lastLogged)).slice(-1200);
+        }
+
+        function zoomChart(factor) {
+            const records = chartRecords();
+            if (!records.length) return;
+            const start = chartView ? chartView[0] : records[0].ts.getTime();
+            const end = chartView ? chartView[1] : Math.max(start + 2000, records[records.length - 1].ts.getTime());
+            const middle = (start + end) / 2;
+            const half = Math.max(1000, (end - start) * factor / 2);
+            chartView = [middle - half, middle + half];
+            drawChart();
+        }
+
+        function drawChart() {
+            const canvas = document.getElementById('tempChart');
+            const width = canvas.clientWidth || 300, height = canvas.clientHeight || 380;
+            const ratio = window.devicePixelRatio || 1;
+            canvas.width = Math.round(width * ratio);
+            canvas.height = Math.round(height * ratio);
+            const ctx = canvas.getContext('2d');
+            ctx.scale(ratio, ratio);
+            ctx.clearRect(0, 0, width, height);
+            ctx.font = '12px Arial';
+            ctx.fillStyle = '#666';
+            ctx.fillText(`${currentTempType} temperature (°C)`, 55, 16);
+            const records = chartRecords();
+            const first = records.length ? records[0].ts.getTime() : 0;
+            const start = chartView ? chartView[0] : first;
+            const end = chartView ? chartView[1] : Math.max(first + 2000, records.length ? records[records.length - 1].ts.getTime() : 0);
+            const visible = records.filter(r => r.ts.getTime() >= start && r.ts.getTime() <= end);
+            const values = visible.map(getVal).filter(Number.isFinite);
+            if (!values.length) {
+                ctx.fillText(records.length ? 'No readings in this view. Reset zoom to see all readings.' : 'Waiting for temperature readings...', 25, height / 2);
+                return;
+            }
+            const low = Math.floor(Math.min(...values) - 1), high = Math.ceil(Math.max(...values) + 1);
+            const plotWidth = Math.max(1, width - 75), plotHeight = Math.max(1, height - 70);
+            const x = ts => 55 + (ts - start) / (end - start) * plotWidth;
+            const y = value => 30 + (high - value) / (high - low) * plotHeight;
+            for (let i = 0; i <= 4; i++) {
+                const value = low + (high - low) * i / 4;
+                ctx.textAlign = 'left';
+                ctx.strokeStyle = '#e5e5e5';
+                ctx.beginPath(); ctx.moveTo(55, y(value)); ctx.lineTo(width - 20, y(value)); ctx.stroke();
+                ctx.fillText(value.toFixed(1), 8, y(value) + 4);
+                const ts = start + (end - start) * i / 4;
+                ctx.textAlign = i === 0 ? 'left' : i === 4 ? 'right' : 'center';
+                ctx.fillText(new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }), x(ts), height - 12);
+            }
+            ctx.textAlign = 'left';
+            ctx.strokeStyle = currentTempType === 'Blood' ? '#27ae60' : '#2980b9';
+            ctx.fillStyle = ctx.strokeStyle;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            let connected = false;
+            for (const reading of visible) {
+                const value = getVal(reading);
+                if (!Number.isFinite(value)) { connected = false; continue; }
+                if (connected) ctx.lineTo(x(reading.ts.getTime()), y(value));
+                else ctx.moveTo(x(reading.ts.getTime()), y(value));
+                connected = true;
+            }
+            ctx.stroke();
+            // Mark the latest valid sample even when a sensor error broke the line.
+            const latest = visible.slice().reverse().find(r => Number.isFinite(getVal(r)));
+            ctx.beginPath(); ctx.arc(x(latest.ts.getTime()), y(getVal(latest)), 3, 0, Math.PI * 2); ctx.fill();
+        }
+
+        async function request(url) {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 5000);
+            try {
+                const response = await fetch(url, { cache: 'no-store', signal: controller.signal });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                // Read the body before clearing the timeout, including streamed CSV responses.
+                return await response.text();
+            } finally { clearTimeout(timeout); }
+        }
+
+        async function syncTime() {
+            if (syncBusy) return;
+            syncBusy = true;
+            try {
+                await request('/api/time?epoch_ms=' + Date.now());
+            } catch (error) {
+                console.warn('Clock synchronisation failed:', error);
+            } finally { syncBusy = false; }
+        }
+
+        async function loadStatus() {
+            if (statusBusy) return;
+            statusBusy = true;
+            try {
+                const status = JSON.parse(await request('/api/status'));
+                const cooling = status.cooling_valid ? Number(status.cooling_temperature) : NaN;
+                const ambient = status.ambient_valid ? Number(status.ambient_temperature) : NaN;
+                document.getElementById('latestTemp_Blood').textContent = Number.isFinite(cooling) ? fmtTemp(cooling) : 'Unavailable';
+                document.getElementById('latestTemp_Internal').textContent = Number.isFinite(ambient) ? fmtTemp(ambient) : 'Unavailable';
+                document.getElementById('latestBattery').textContent = `${status.battery_simulated}%`;
+                document.getElementById('latestTime').textContent = status.day_time || 'Clock not set';
+                document.getElementById('liveStatus').textContent = status.time_synced ? 'Connected · Live readings update every 2 seconds.' : 'Connected · Setting clock for SD logging...';
+                document.getElementById('latestEmpty').style.display = !Number.isFinite(cooling) && !Number.isFinite(ambient) ? 'block' : 'none';
+                document.getElementById('latestEmpty').textContent = 'Waiting for valid sensor readings. Check sensor connections if this continues.';
+                if (!status.time_synced) syncTime();
+                if (Number.isFinite(cooling) || Number.isFinite(ambient)) {
+                    const timestamp = status.day_time ? parseTimestamp(status.day_time) : null;
+                    liveData.push({ ts: timestamp ? timestamp.ts : new Date(), temp_blood: cooling, temp_internal: ambient });
+                    liveData = liveData.slice(-900);
+                    drawChart();
+                }
+            } catch (error) {
+                document.getElementById('liveStatus').textContent = 'Disconnected · Latest readings may be stale. Reconnect to the ESP32 Wi-Fi.';
+            } finally { statusBusy = false; }
+        }
+
+        async function loadCSVData() {
+            if (historyBusy) return;
+            historyBusy = true;
+            try {
+                allData = parseCSV(await request('/download'));
+                document.getElementById('historyStatus').textContent = allData.length ? `${allData.length} recent SD records loaded. Statistics use this available history.` : 'No SD history yet. Live readings appear above and in the chart.';
+                drawChart();
+                updateStats();
+            } catch (error) {
+                document.getElementById('historyStatus').textContent = 'SD history unavailable. Live sensor readings continue independently.';
+            } finally { historyBusy = false; }
+        }
+
+        function parseTimestamp(value) {
+            const match = value.trim().match(/^(\d{4}-\d{2}-\d{2})[ T_](\d{2}:\d{2}:\d{2})$/);
+            if (!match) return null;
+            const ts = new Date(`${match[1]}T${match[2]}`);
+            return Number.isNaN(ts.getTime()) ? null : { day: match[1], time: match[2], ts };
+        }
+
+        function parseCSV(csv) {
+            const lines = csv.trim().split(/\r?\n/);
+            const result = [];
+            for (let i = 1; i < lines.length; i++) {
+                const fields = lines[i].split(',').map(value => value.trim());
+                if (fields.length < 4) continue;
+                // Older SD files have separate date/time columns and no battery column.
+                const legacy = /^\d{4}-\d{2}-\d{2}$/.test(fields[0]) && /^\d{2}:\d{2}:\d{2}$/.test(fields[1]);
+                const day_time = legacy ? `${fields[0]} ${fields[1]}` : fields[0];
+                const timestamp = parseTimestamp(day_time);
+                if (!timestamp) continue;
+                const number = value => value === undefined || value === '' ? NaN : Number(value);
+                const temp_blood = number(fields[legacy ? 2 : 1]);
+                const temp_internal = number(fields[legacy ? 3 : 2]);
+                if (!Number.isFinite(temp_blood) && !Number.isFinite(temp_internal)) continue;
+                result.push({
+                    temp_blood, temp_internal, day_time,
+                    day: timestamp.day, time: timestamp.time, ts: timestamp.ts,
+                    battery: legacy ? '' : fields[3]
+                });
+            }
+            result.sort((a, b) => a.ts - b.ts);
+            return result;
+        }
+
+        function setUnit(unit) {
+            currentTempType = unit;
+            document.querySelectorAll('.unit-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.unit === unit);
+            });
+            drawChart();
+            updateStats();
+        }
+
+        function downloadCSV() {
+            window.location.href = '/download';
+        }
+
+        function resetZoomAll() {
+            chartView = null;
+            drawChart();
+        }
+
+        async function deleteData() {
+            if (!confirm("Delete all logged data?")) return;
+            try {
+                const response = await fetch('/delete', { method: 'POST' });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                allData = [];
+                liveData = [];
+                resetZoomAll();
+                clearStats();
+                await loadCSVData();
+                alert('Data deleted');
+            } catch (error) {
+                alert('Could not delete data: ' + error.message);
+            }
+        }
+
+        function fmtTemp(input) {
+            let val = input;
+            if (input && typeof input === 'object') {
+                val = currentTempType === 'Blood' ? input.temp_blood : input.temp_internal;
+            }
+            if (val === null || val === undefined || isNaN(val)) return '--';
+            return `${val.toFixed(1)}°C`;
+        }
+
+        function fmtTempDelta(c) {
+            if (c === null || c === undefined || isNaN(c)) return '--';
+            return `Δ${c.toFixed(1)}°C`;
+        }
+
+        function fmtDuration(mins) {
+            if (mins === null || mins === undefined || isNaN(mins)) return '--';
+            mins = Math.round(mins);
+            const h = Math.floor(mins / 60);
+            const m = mins % 60;
+            if (h === 0) return `${m}m`;
+            return `${h}h ${m}m`;
+        }
+
+        function fmtHM(mins) {
+            if (mins === null || mins === undefined || isNaN(mins)) return '--';
+            mins = Math.round(mins);
+            const h = Math.floor(mins / 60);
+            const m = mins % 60;
+            return `${h}h ${m}m`;
+        }
+
+        function clearStats() {
+            document.getElementById('statsContent').style.display = 'none';
+            document.getElementById('statsEmpty').style.display = 'block';
+        }
+
+        function showStats() {
+            document.getElementById('statsContent').style.display = 'block';
+            document.getElementById('statsEmpty').style.display = 'none';
+        }
+
+        function validReadings() {
+            return allData.filter(d => d.ts && Number.isFinite(getVal(d)));
+        }
+
+        function groupByDay(readings) {
+            const map = new Map();
+            for (const r of readings) {
+                if (!map.has(r.day)) map.set(r.day, []);
+                map.get(r.day).push(r);
+            }
+            const keys = Array.from(map.keys()).sort();
+            return keys.map(k => ({ dateKey: k, readings: map.get(k) }));
+        }
+
+        function minMax(readings) {
+            if (readings.length === 0) return null;
+            let minR = readings[0], maxR = readings[0];
+            for (const r of readings) {
+                if (getVal(r) < getVal(minR)) minR = r;
+                if (getVal(r) > getVal(maxR)) maxR = r;
+            }
+            return { min: minR, max: maxR };
+        }
+
+        function timeInBand(readings, lo, hi) {
+            const MAX_GAP_MIN = 15;
+            let total = 0;
+            for (let i = 0; i < readings.length - 1; i++) {
+                const cur = readings[i];
+                const next = readings[i + 1];
+                if (!cur.ts || !next.ts) continue;
+                const gapMin = (next.ts - cur.ts) / 60000;
+                if (gapMin <= 0 || gapMin > MAX_GAP_MIN) continue;
+                const val = getVal(cur);
+                if (val >= lo && val < hi) total += gapMin;
+            }
+            return total;
+        }
+
+        function computeDailyTransitions(dayGroups) {
+            const results = [];
+            for (let i = 0; i < dayGroups.length; i++) {
+                const day = dayGroups[i];
+                const mm = minMax(day.readings);
+                if (!mm || !mm.min.ts || !mm.max.ts) {
+                    results.push({ dateKey: day.dateKey, toMax: null, toMin: null });
+                    continue;
+                }
+
+                let toMax = null;
+                const sameDayDiff = (mm.max.ts - mm.min.ts) / 60000;
+                if (sameDayDiff > 0) toMax = sameDayDiff;
+
+                let toMin = null;
+                if (i + 1 < dayGroups.length) {
+                    const nextMm = minMax(dayGroups[i + 1].readings);
+                    if (nextMm && nextMm.min.ts && nextMm.min.ts > mm.max.ts) {
+                        toMin = (nextMm.min.ts - mm.max.ts) / 60000;
+                    }
+                }
+
+                results.push({ dateKey: day.dateKey, toMax, toMin });
+            }
+            return results;
+        }
+
+        function mostRecentCompleted(transitions, key) {
+            for (let i = transitions.length - 1; i >= 0; i--) {
+                if (transitions[i][key] !== null) return transitions[i][key];
+            }
+            return null;
+        }
+        function getVal(r) {
+            return currentTempType === 'Blood' ? r.temp_blood : r.temp_internal;
+        }
+
+        function updateStats() {
+            const readings = validReadings();
+            if (readings.length === 0) { clearStats(); return; }
+            showStats();
+
+            const lastTs = readings[readings.length - 1].ts;
+            const cutoff24h = new Date(lastTs.getTime() - 24 * 60 * 60 * 1000);
+            const cutoff7d = new Date(lastTs.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+            const last24h = readings.filter(r => r.ts >= cutoff24h);
+            const last7d = readings.filter(r => r.ts >= cutoff7d);
+
+            const mm24 = minMax(last24h);
+            if (mm24) {
+                document.getElementById('stat24Max').textContent = fmtTemp(getVal(mm24.max));
+                document.getElementById('stat24MaxTime').textContent = mm24.max.day_time;
+                document.getElementById('stat24Min').textContent = fmtTemp(getVal(mm24.min));
+                document.getElementById('stat24MinTime').textContent = mm24.min.day_time;
+            } else {
+                document.getElementById('stat24Max').textContent = '--';
+                document.getElementById('stat24Min').textContent = '--';
+                document.getElementById('stat24MaxTime').textContent = '';
+                document.getElementById('stat24MinTime').textContent = '';
+            }
+
+            const mm7 = minMax(last7d);
+            if (mm7) {
+                document.getElementById('stat7Max').textContent = fmtTemp(getVal(mm7.max));
+                document.getElementById('stat7MaxTime').textContent = mm7.max.day_time;
+                document.getElementById('stat7Min').textContent = fmtTemp(getVal(mm7.min));
+                document.getElementById('stat7MinTime').textContent = mm7.min.day_time;
+            } else {
+                document.getElementById('stat7Max').textContent = '--';
+                document.getElementById('stat7Min').textContent = '--';
+                document.getElementById('stat7MaxTime').textContent = '';
+                document.getElementById('stat7MinTime').textContent = '';
+            }
+
+            const HOT_THRESHOLD_C = 25;
+            const COLD_THRESHOLD_C = 15;
+            const aboveMins = timeInBand(last7d, HOT_THRESHOLD_C, Infinity);
+            const midMins = timeInBand(last7d, COLD_THRESHOLD_C, HOT_THRESHOLD_C);
+            const belowMins = timeInBand(last7d, -Infinity, COLD_THRESHOLD_C);
+            document.getElementById('statAbove25').textContent = fmtHM(aboveMins);
+            document.getElementById('statMid1525').textContent = fmtHM(midMins);
+            document.getElementById('statBelow15').textContent = fmtHM(belowMins);
+
+            const dayGroups = groupByDay(last7d);
+            if (dayGroups.length > 0) {
+                const transitions = computeDailyTransitions(dayGroups);
+
+                const latestMax = mostRecentCompleted(transitions, 'toMax');
+                const latestMin = mostRecentCompleted(transitions, 'toMin');
+                document.getElementById('statMaxToday').textContent = latestMax !== null ? fmtDuration(latestMax) : 'N/A';
+                document.getElementById('statMinToday').textContent = latestMin !== null ? fmtDuration(latestMin) : 'N/A';
+
+                const maxVals = transitions.filter(t => t.toMax !== null).map(t => t.toMax);
+                const minVals = transitions.filter(t => t.toMin !== null).map(t => t.toMin);
+                const avg = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
+                const avgMax = avg(maxVals);
+                const avgMin = avg(minVals);
+                document.getElementById('statMaxAvg7').textContent = avgMax !== null ? fmtDuration(avgMax) : 'N/A';
+                document.getElementById('statMinAvg7').textContent = avgMin !== null ? fmtDuration(avgMin) : 'N/A';
+            } else {
+                ['statMaxToday', 'statMinToday', 'statMaxAvg7', 'statMinAvg7'].forEach(id => {
+                    document.getElementById(id).textContent = '--';
+                });
+            }
+
+            const swingBody = document.getElementById('swingTableBody');
+            swingBody.innerHTML = '';
+            if (dayGroups.length === 0) {
+                swingBody.innerHTML = '<tr><td colspan="4" class="no-data-msg">No data in the last 7 days.</td></tr>';
+            } else {
+                for (let i = dayGroups.length - 1; i >= 0; i--) {
+                    const g = dayGroups[i];
+                    const mm = minMax(g.readings);
+                    if (!mm) continue;
+                    const swing = getVal(mm.max) - getVal(mm.min);
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `<td>${g.dateKey}</td>` +
+                        `<td>${fmtTemp(getVal(mm.min))}</td>` +
+                        `<td>${fmtTemp(getVal(mm.max))}</td>` +
+                        `<td><strong>${fmtTempDelta(swing)}</strong></td>`;
+                    swingBody.appendChild(tr);
+                }
+            }
+
+            const hourSums = new Array(24).fill(0);
+            const hourCounts = new Array(24).fill(0);
+            for (const r of readings) {
+                const h = r.ts.getHours();
+                hourSums[h] += getVal(r);
+                hourCounts[h]++;
+            }
+            const hourLabels = [];
+            const hourAverages = [];
+            for (let h = 0; h < 24; h++) {
+                hourLabels.push(h.toString().padStart(2, '0') + ':00');
+                hourAverages.push(hourCounts[h] > 0 ? hourSums[h] / hourCounts[h] : null);
+            }
+        }
+
+        window.onload = () => {
+            createCharts();
+            setUnit('Blood');
+            loadStatus();
+            syncTime().then(loadCSVData);
+            setInterval(loadStatus, 2000);
+            setInterval(loadCSVData, 10000);
+        };
+    </script>
+</body>
+
+</html>
